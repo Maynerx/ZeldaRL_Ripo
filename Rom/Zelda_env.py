@@ -10,10 +10,10 @@ from pathlib import Path
 import mediapy as media
 
 
-with open('/'.join(__file__.split('\\')[:-1]) + '/reward_table.json', 'r+') as f:
+with open('Rom/reward_table.json', 'r+') as f:
     reward_table = json.load(f)
 
-PATH = '/'.join(__file__.split('\\')[:-1]) + '/bin/zelda.gbc'
+PATH = 'Rom/bin/zelda.gbc'
 
 # TODO : Implement a negatif reward system when the model return in an already known area
 
@@ -210,7 +210,8 @@ class ZeldaEnv(gym.Env):
                     self.pyboy.send_input(self.release_button[action - 4])
                 if self.valid_actions[action] == WindowEvent.PRESS_BUTTON_START:
                     self.pyboy.send_input(WindowEvent.RELEASE_BUTTON_START)
-            self.add_video_frame()
+            if self.save:
+                self.add_video_frame()
             self.pyboy.tick()
         #self.pyboy.send_input(self.release_actions[action])
     
