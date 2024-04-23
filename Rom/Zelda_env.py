@@ -3,7 +3,7 @@ import gymnasium as gym
 from pyboy.utils import WindowEvent
 import pyboy
 import numpy as np
-from memory_adress import *
+from Rom.memory_adress import *
 from skimage.transform import resize
 import json
 from pathlib import Path
