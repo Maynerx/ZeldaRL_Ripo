@@ -18,7 +18,7 @@ PATH = '/'.join(__file__.split('\\')[:-1]) + '/bin/zelda.gbc'
 # TODO : Implement a negatif reward system when the model return in an already known area
 
 class ZeldaEnv(gym.Env):
-    def __init__(self, pos, show = False):
+    def __init__(self, pos, show = False, save = True):
         super().__init__()
         self.init_state = 'init.state'
         self.frame_stacks = 3
@@ -89,7 +89,9 @@ class ZeldaEnv(gym.Env):
         self.pyboy.set_emulation_speed(25)
         self.reset_number = 0
         self.reset()
-        self.initialize(pos=pos)
+        if save:
+            self.initialize(pos=pos)
+        self.save = save
 
 
 
@@ -154,7 +156,8 @@ class ZeldaEnv(gym.Env):
     
     def close(self):
         self.pyboy.stop()
-        self.full_frame_writer.close()
+        if self.save:
+            self.full_frame_writer.close()
 
 
     def check_change(self):
