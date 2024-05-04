@@ -1,7 +1,10 @@
 {
-    "_comment" : "easy reward : 2; mid : 4; complex : 10; debug : 50",
+    "_comment" : "explo : 0.005; easy reward : 2; mid : 4; complex : 10; debug : 50",
     "shield" : 10,
-    "explore" : 2,
+    "explore" : 0.005,
     "sword" : 10,
-    "explore_house" : 4
+    "explore_house" : 0.5,
+    "loss" : -1,
+    "hit" : -2,
+    "more_life" : 2
 }

@@ -1,6 +1,9 @@
 CURRENT_WORLD = 0xD401 # if in houses : 0 else : 1 or more
 PLAYER_X = 0xD404 # must check
 PLAYER_Y = 0xD405 # must check
+GREAT_PLAYER_X = 0xFF98 
+GREAT_PLAYER_Y = 0xFF99 
+LOCATION = [0xD404, 0xD405]
 CURRENT_LOADED_MAP = [0xD700, 0xD79B]
 WORLD_STATUT = [0xD800, 0xD8FF] # * min - max In reality idk, It seems that when you discoverd a new location it's setting it to 128
 HELD_ITEM_1 = 0xDB00 # Refered to the item's index list

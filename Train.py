@@ -29,10 +29,13 @@ def make_env(rank, seed=0):
 
 if __name__ == '__main__':
     
-    timesteps = int(6e5)
+    #ep_length = 2048*2
+    timesteps = int(1.2e6)
+    #learn_steps = 5
     num_cpu = 10
     log_dir = "tmp/"
     os.makedirs(log_dir, exist_ok=True)
+    pre_trained = False
 
     vec_env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
@@ -40,11 +43,25 @@ if __name__ == '__main__':
     vec_env = VecFrameStack(vec_env, n_stack=4)
 
     vec_env = VecMonitor(vec_env, log_dir)
-    callback = SaveOnBestTrainingRewardCallback(check_freq=3000, log_dir=log_dir)
+    callback = SaveOnBestTrainingRewardCallback(check_freq=4096, log_dir=log_dir)
 
-    model = PPO('CnnPolicy', env=vec_env) #PPO.load('best_model', env=vec_env)#
     
-    model.learn(timesteps, progress_bar=True, callback=callback)
+    if pre_trained:
+        model = PPO.load('best_model', env=vec_env)
+        model.set_parameters('best_model')
+    else:
+        model = PPO('CnnPolicy', env=vec_env,  n_steps=2048, batch_size=512, n_epochs=1, gamma=0.999)
+        model.learn(total_timesteps=timesteps, progress_bar=True, callback=callback)
+        model.save('end_model')
 
     plot_results([log_dir], timesteps, results_plotter.X_TIMESTEPS, "ZeldaTest")
     plt.show()
+    
+    """
+    for _ in range(learn_steps):
+        model.learn(total_timesteps=ep_length*num_cpu, progress_bar=False, callback=callback)
+        print(_)
+
+    
+    
+    """

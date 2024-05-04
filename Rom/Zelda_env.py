@@ -7,6 +7,7 @@ from Rom.memory_adress import *
 from skimage.transform import resize
 import json
 from pathlib import Path
+import hnswlib
 import mediapy as media
 
 
@@ -27,6 +28,7 @@ class ZeldaEnv(gym.Env):
 
 
         self.got_shield = False
+        self.got_sword = False
         self.visited_location = []
         self.visited_worlds = []
 
@@ -84,6 +86,7 @@ class ZeldaEnv(gym.Env):
             PATH,
             window='SDL2' if show else'null'
                 )
+        self.show = show
         self.screen = self.pyboy.screen
         self.old_info = self._get_info()
         self.pyboy.set_emulation_speed(speed)
@@ -93,9 +96,14 @@ class ZeldaEnv(gym.Env):
             self.initialize(pos=pos)
         self.save = save
 
-
-
-
+    """
+    def init_knn(self):
+        # Declaring index
+        self.knn_index = hnswlib.Index(space='l2', dim=self.vec_dim) # possible options are l2, cosine or ip
+        # Initing index - the maximum number of elements should be known beforehand
+        self.knn_index.init_index(
+            max_elements=self.num_elements, ef_construction=100, M=16)
+    """
     def initialize(self, pos):
         self.full_frame_writer = media.VideoWriter(f'vid/full_{pos}.mp4', (144, 160), fps=60)
         self.full_frame_writer.__enter__()
@@ -167,37 +175,84 @@ class ZeldaEnv(gym.Env):
         self.old_info = self._get_info()
 
     def clear(self):
+        self.got_sword = False
         self.got_shield = False
+        self.explo = 0
+        self.heal_r = 0
+        self.reward_sum = 0
         self.visited_location = [(self._get_player_x, self._get_player_y)]
         self.visited_worlds = [self._get_current_world]
+        self.locations = self._get_info()['map_statut']
+        self.life = self._get_info()['health']
 
 
+    def _reset_memory(self):
+        self.pyboy.memory[WORLD_STATUT[0]:WORLD_STATUT[1]] = [0]*len(self.pyboy.memory[WORLD_STATUT[0]:WORLD_STATUT[1]])
+    
+    def _skip_frame(self):
+        self.pyboy.tick(count=25, render=False)
+
+    def exploration_reward(self, change, info):
+        reward = 0
+        if change['player_location'] and info['player_location'] not in self.visited_location:
+            reward += reward_table['explore']
+            self.visited_location.append(info['player_location'])
+
+        if change['current_world'] and info['current_world'] not in self.visited_worlds:
+            reward += reward_table['explore_house']
+            self.visited_worlds.append(info['current_world'])
+        self.explo += reward
+        return reward
+
+    def fight_reward(self, change, info):
+        reward = 0
+        if change['health'] and self.life > info['health']:
+            reward += reward_table['hit']
+            self.life = self._get_info()['health']
+
+        elif change['health'] and self.life < info['health']:
+            reward += reward_table['more_life']
+            self.life = info['health']
+        self.heal_r += reward
+        return reward
+
+    def event_reward(self, change):
+        reward = 0
+        if change['shield_level'] and self.got_shield == False:
+            reward += reward_table['shield']
+            self.got_shield = True
+        
+        if change['sword_level'] and self.got_sword == False:
+            self.got_sword = True
+            reward += reward_table['sword']
+        return reward
+
+    def print_reward(self):
+        txt = f'step: {self.step_count}  shield: {self.got_shield}  sword: {self.got_sword}  explo: {self.explo}  heal: {self.heal_r}  sum: {self.reward_sum}'
+        if self.show:
+            print(f'\r{txt}', end='', flush=True)
+        else:
+            with open('output.txt', 'w+') as f:
+                print(f'\r{txt}', end='', flush=True, file=f)
     
     def _get_rewards(self, info):
         '''The reward method'''
         # TODO : implement the reward and create a reward table file
         changes = self.check_change()
-        reward = 0
-        if changes['shield_level'] and self.got_shield == False:
-            reward += reward_table['shield']
-
-
-            
-        if changes['map_statut']:#changes['player_location'] and (self._get_player_x, self._get_player_y) not in self.visited_location:
-            reward += reward_table['explore']
-            self.visited_location.append((self._get_player_x, self._get_player_y))
-
-
-
-        if changes['current_world'] and self._get_current_world not in self.visited_worlds:
-            reward += reward_table['explore_house']
-            self.visited_worlds.append(self._get_current_world)
-
+        if changes['map_statut']: self._skip_frame()
+        reward = (self.event_reward(changes) +
+                  self.exploration_reward(changes, info) +
+                  self.fight_reward(changes, info))
+        self.reward_sum += reward
+        self.print_reward()
+        self._reset_memory()
         self.update()
-            
         return reward
     
     def _action_on_emulator(self, action):
+        if action == 26:
+            self.pyboy.tick()
+            return
         self.pyboy.send_input(self.valid_actions[action])
         # disable rendering when we don't need it
         for i in range(9):
@@ -227,12 +282,12 @@ class ZeldaEnv(gym.Env):
     @property
     def _get_player_x(self):
         '''Get the player's x position'''
-        return self.pyboy.memory[PLAYER_X]
+        return self.pyboy.memory[GREAT_PLAYER_X]
 
     @property
     def _get_player_y(self):
         '''Get the player's y position'''
-        return self.pyboy.memory[PLAYER_Y]
+        return self.pyboy.memory[GREAT_PLAYER_Y]
     
     @property
     def _get_maps_statuts(self):
