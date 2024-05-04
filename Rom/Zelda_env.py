@@ -7,7 +7,6 @@ from Rom.memory_adress import *
 from skimage.transform import resize
 import json
 from pathlib import Path
-import hnswlib
 import mediapy as media
 
 
