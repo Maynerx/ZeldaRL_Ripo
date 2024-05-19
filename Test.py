@@ -30,7 +30,7 @@ if __name__ == '__main__':
     vec_env = SubprocVecEnv([make_env(i) for i in range(1)])
     vec_env = VecFrameStack(vec_env, n_stack=4)
 
-    model = PPO.load('best_model', env=vec_env)
+    model = PPO.load('end_model', env=vec_env)
     obs = vec_env.reset()
 
     for _ in range(int(1e4)):

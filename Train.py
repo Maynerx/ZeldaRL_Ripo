@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 
-def make_env(rank, seed=0):
+def make_env(rank, seed=0, max_time = 2048 * 8):
     """
     Utility function for multiprocessed env.
     :param env_id: (str) the environment ID
@@ -19,7 +19,7 @@ def make_env(rank, seed=0):
     :param rank: (int) index of the subprocess
     """
     def _init():
-        env = ZeldaEnv(rank, save=False)
+        env = ZeldaEnv(rank, save=False, max_step=max_time)
         env.reset(seed=(seed + rank))
         return env
     set_random_seed(seed)
@@ -30,14 +30,16 @@ def make_env(rank, seed=0):
 if __name__ == '__main__':
     
     #ep_length = 2048*2
-    timesteps = int(1.2e6)
+    timesteps = int(1e6)
     #learn_steps = 5
     num_cpu = 10
     log_dir = "tmp/"
     os.makedirs(log_dir, exist_ok=True)
     pre_trained = False
+    end_model = True
+    ep_length = 2048 * 8
 
-    vec_env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
+    vec_env = SubprocVecEnv([make_env(i, ep_length) for i in range(num_cpu)])
 
 
     vec_env = VecFrameStack(vec_env, n_stack=4)
@@ -47,12 +49,15 @@ if __name__ == '__main__':
 
     
     if pre_trained:
-        model = PPO.load('best_model', env=vec_env)
-        model.set_parameters('best_model')
+        model = PPO.load('end_model' if end_model else 'best_model', env=vec_env)
+        model.set_parameters('end_model' if end_model else 'best_model')
+        model.rollout_buffer.buffer_size = ep_length
+        model.rollout_buffer.reset()
     else:
-        model = PPO('CnnPolicy', env=vec_env,  n_steps=2048, batch_size=512, n_epochs=1, gamma=0.999)
-        model.learn(total_timesteps=timesteps, progress_bar=True, callback=callback)
-        model.save('end_model')
+        model = PPO('CnnPolicy', env=vec_env,  n_steps=ep_length, batch_size=512, n_epochs=1, gamma=0.999)
+        
+    model.learn(total_timesteps=timesteps, progress_bar=True, callback=callback)
+    model.save('end_model')
 
     plot_results([log_dir], timesteps, results_plotter.X_TIMESTEPS, "ZeldaTest")
     plt.show()

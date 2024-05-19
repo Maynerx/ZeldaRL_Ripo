@@ -18,12 +18,12 @@ PATH = 'Rom/bin/zelda.gbc'
 # TODO : Implement a negatif reward system when the model return in an already known area
 
 class ZeldaEnv(gym.Env):
-    def __init__(self, pos, show = False, save = True, speed = 25):
+    def __init__(self, pos, show = False, save = True, speed = 25, max_step = 2048*8):
         super().__init__()
         self.init_state = 'init.state'
         self.frame_stacks = 3
         self.step_count = 0
-        self.max_step = 10000
+        self.max_step = max_step
 
 
         self.got_shield = False
